@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+	<meta charset="utf-8">
+	<title> 作業七範例程式 </title>
+
+	<style>
+		div {
+			margin-bottom: 20px;
+		}
+
+		.my-btn {
+			padding: 10px 20px;
+			color: white;
+			border-radius: 5px;
+			text-decoration: none;
+			margin-right: 5px;
+		}
+
+		.my-btn:hover {
+			color: black;
+		}
+
+		.my-btn.allow {
+			background-color: rgb(62, 62, 179);
+			cursor: pointer;
+		}
+
+		.my-btn.allow:active {
+			background-color: rgba(62, 62, 179, 0.459);
+			color: rgb(252, 7, 7);
+		}
+
+		.my-btn.disabled {
+			background-color: rgba(7, 7, 7, 0.616);
+			cursor: not-allowed;
+		}
+
+	</style>
+</head>
+
+</body>
+	<script src="daikon-min.js"></script>
+	<script src="base64js.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/gh/t109598105/ScoreOutputer@latest/dist/scoreoutputer.min.js"></script>
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js"></script>
+	<div style="padding: 20px; margin: 10px; border-style: solid">
+		<div id="self-eval" style="float:right"></div>
+		
+		<h1> CorCTA Dicom 資料 </h1>
+		<div> 說明請參考 HTML 檔案的原始碼 </div>
+		<div>
+			<a id="choose-dir" class="my-btn disabled"> 選擇檔案夾 </a>
+		</div>
+		<div id="info"> 等待 Dicom... </div>
+		<div id="size"></div>
+		<div>
+			<img id='base64_image' style="width:400px;height:400px"></img><br/><br/>
+		<div/>
+		<div> 
+			<input style="width:400px" type="text" placeholder="檔名_長_寬_高" id="file-name"> 
+		</div>
+		<div>
+			<a 
+				class="my-btn disabled"
+				id="download-button-8bit"
+				target="_blank"
+			> 下載 RAW 檔案(8bit)</a>
+			<a 
+				class="my-btn disabled"
+				id="download-button-16bit"
+				target="_blank"
+			> 下載 RAW 檔案(16bit)</a>
+		</div>
+		
+		
+	</div>
+
+	<script >
+		function convertRaw(){
+			/**
+			 * 使用 Dicom2Raw 這個 class 進行轉換
+			 * 需要 new 一個實例出來
+			*/
+			var dicom2Raw = new Dicom2Raw();
+
+			/**
+			 * 選擇一個資料夾上傳
+			*/
+			dicom2Raw.readSeriesFromDir(
+				/**
+				 * 這個變數是檢查該資料夾下的附檔名是否符合
+				 * 不符合的話則不處理
+				 * 設為 null 代表不檢查
+				*/
+				null,
+				function(){
+					/**
+					 * Dicom2Raw 的 build 方法
+					 * 將對 dicom  系列的圖像進行整理和組織
+					 * 組成一個真正有序的 object
+					*/
+					dicom2Raw.build();
+					document.getElementById('info').innerText = '讀取成功';
+					
+					var dimension = dicom2Raw.getDim();
+					
+					/*
+					*-----------------------------------------
+					*  顯示圖片
+					*/
+					var raw = dicom2Raw.getImage(6);
+
+					console.log(raw)
+					
+					function base64ArrayBuffer(arrayBuffer) {
+						var base64    = ''
+						var encodings = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+					  
+						var bytes         = new Uint8Array(arrayBuffer)
+						var byteLength    = bytes.byteLength
+						var byteRemainder = byteLength % 3
+						var mainLength    = byteLength - byteRemainder
+					  
+						var a, b, c, d
+						var chunk
+					  
+						// Main loop deals with bytes in chunks of 3
+						for (var i = 0; i < mainLength; i = i + 3) {
+						  // Combine the three bytes into a single integer
+						  chunk = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2]
+					  
+						  // Use bitmasks to extract 6-bit segments from the triplet
+						  a = (chunk & 16515072) >> 18 // 16515072 = (2^6 - 1) << 18
+						  b = (chunk & 258048)   >> 12 // 258048   = (2^6 - 1) << 12
+						  c = (chunk & 4032)     >>  6 // 4032     = (2^6 - 1) << 6
+						  d = chunk & 63               // 63       = 2^6 - 1
+					  
+						  // Convert the raw binary segments to the appropriate ASCII encoding
+						  base64 += encodings[a] + encodings[b] + encodings[c] + encodings[d]
+						}
+					  
+						// Deal with the remaining bytes and padding
+						if (byteRemainder == 1) {
+						  chunk = bytes[mainLength]
+					  
+						  a = (chunk & 252) >> 2 // 252 = (2^6 - 1) << 2
+					  
+						  // Set the 4 least significant bits to zero
+						  b = (chunk & 3)   << 4 // 3   = 2^2 - 1
+					  
+						  base64 += encodings[a] + encodings[b] + '=='
+						} else if (byteRemainder == 2) {
+						  chunk = (bytes[mainLength] << 8) | bytes[mainLength + 1]
+					  
+						  a = (chunk & 64512) >> 10 // 64512 = (2^6 - 1) << 10
+						  b = (chunk & 1008)  >>  4 // 1008  = (2^6 - 1) << 4
+					  
+						  // Set the 2 least significant bits to zero
+						  c = (chunk & 15)    <<  2 // 15    = 2^4 - 1
+					  
+						  base64 += encodings[a] + encodings[b] + encodings[c] + '='
+						}
+						
+						return base64
+					  }
+
+					var url= base64ArrayBuffer(raw);
+					document.getElementById('base64_image').src="data:image/jpe;base64,"+url;
+
+					/*
+					*-----------------------------------------
+					*/
+
+					document.getElementById('size').innerText = '尺寸: ' + dimension.x + ' x ' + dimension.y + ' x ' + dimension.z;
+
+					dicom2Raw.concatnate(function(){
+
+						document.getElementById('download-button-8bit').setAttribute('class','my-btn allow');
+						document.getElementById('download-button-16bit').setAttribute('class','my-btn allow');
+						document.getElementById('info').innerText='轉換完成';
+
+						/*8bit*/
+						document.getElementById('download-button-8bit').addEventListener('click',function(){
+							var filename=document.getElementById('file-name').value;
+							var uint8View = new Uint8Array(dicom2Raw.rawData);
+							console.log("Download 8bit！")
+							console.log(uint8View)
+							Dicom2Raw.downloadData(
+								filename+'_8bit.raw',
+								uint8View
+							);
+						});
+
+						/*16bit*/
+						document.getElementById('download-button-16bit').addEventListener('click',function(){
+							var filename=document.getElementById('file-name').value;
+							var uint16View = new Uint16Array(dicom2Raw.rawData);
+							console.log("Download 16bit！")
+							console.log(uint16View)
+							Dicom2Raw.downloadData(
+								filename+'_16bit.raw',
+								uint16View
+							);
+						});
+					});
+				}
+			);
+		};
+
+		/**
+		 * 頁面加載完成時，
+		 * 所要進行的動作會寫在 window.onload 裡面
+		 * 我們會使用到 Dicom2Raw 這個 class 來進行轉換
+		 * 需要使用一個叫做 daikon 的函式庫
+		 * 函式庫: https://github.com/rii-mango/Daikon
+		*/
+		window.onload = function(){
+			var chooseBtn = document.getElementById('choose-dir');
+			
+			chooseBtn.addEventListener('click', function(evt){
+				if(typeof chooseBtn.done == 'undefined'){
+					return;
+				}
+				convertRaw();
+			});
+		
+		
+			/**
+			 * 如果沒有事先引用 daikon，
+			 * 就必須安裝此函式庫，
+			 * 預設使用 jsDelivr 作為 source，
+			 * 可以使用 Dicom2Raw.daikonCDN 變更位址
+			 * 呼叫 Dicom2Raw.installLibrary 安裝函式庫
+			*/
+			if(!Dicom2Raw.isInstalled) {
+				
+				Dicom2Raw.installLibrary(function(){
+					chooseBtn.setAttribute('class', 'my-btn allow');
+					chooseBtn.done = 1;
+				});
+			}
+			else {
+				chooseBtn.setAttribute('class', 'my-btn allow');
+				chooseBtn.done = 1;
+			}
+
+
+			/**
+			 * 自評表 QAQ
+			 * 有做到再勾阿!!
+			*/
+			var so = new ScoreOutputer("110598403");
+			so.installCSS(function(){
+				so.addChild("成功讀取範例程式所附的 DICOM 檔案", 6, true);
+				so.addChild("轉換 DICOM 序列為 RAW 檔案", 1, true);
+				so.addChild("成功下載轉換好的 RAW 檔案", 1, true);
+				so.addChild("可下載 8 bit 或 16 bit 的 RAW 檔案", 1, true);
+				so.addChild("在網頁中顯示中間的圖像", 1, false);
+				
+				so.renderModal(
+					document.body,
+					'rgba(100,45,58,1)', 
+					'white', 
+					'15pt', 
+					'15px', 
+					'作業 7 自我評分表'
+				);
+				so.installDownloadBtn();
+				so.renderBtn(
+					document.getElementById('self-eval'),
+					"開啟自評表"
+				);
+			});
+		};
+	</script>
+</body>
+
+</html>
