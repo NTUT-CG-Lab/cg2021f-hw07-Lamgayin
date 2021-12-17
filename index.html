@@ -111,16 +111,9 @@
 					*  顯示圖片
 					*/
 					var canvas = document.getElementById('myCanvas');
-					var ctx = canvas.getContext('2d');
+					var ctx = canvas.getContext("2d", { colorSpace: "srgb" });
 					var data = new ImageData(new Uint8ClampedArray(dicom2Raw.getImagePixel(99)),512,256);
-					for (var i = 0; i < data.length; i += 4) {
-					   avg = (data[i]+data[i+1]+data[i+2])/3;
-					   data[i] = data[i]/avg;
-					   data[i+1] = data[i+1]/avg;
-					   data[i+2] = data[i+2]/avg;
-					  
-					}
-					ctx.putImageData(data,0,0);
+ 					ctx.putImageData(data,0,0);
 					/**
 					*-----------------------------------------
 					*/
@@ -209,7 +202,7 @@
 				so.addChild("轉換 DICOM 序列為 RAW 檔案", 1, true);
 				so.addChild("成功下載轉換好的 RAW 檔案", 1, true);
 				so.addChild("可下載 8 bit 或 16 bit 的 RAW 檔案", 1, true);
-				so.addChild("在網頁中顯示中間的圖像", 1, false);
+				so.addChild("在網頁中顯示中間的圖像", 1, true);
 				
 				so.renderModal(
 					document.body,
